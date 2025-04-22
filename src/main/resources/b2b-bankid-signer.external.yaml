@@ -1,0 +1,446 @@
+openapi: 3.0.3
+
+info:
+  title: B2B-Sign V0
+  description: Support functions for B2B signing service for business customers. API is for public use.
+  version: 0.0.1
+servers:
+  - url: "https://api.preprod.esign-stoetest.cloud"
+    description: Public testing environment
+  - url: "https://api.esign-stoe{environment}.cloud" # TODO update url
+    variables:
+      environment:
+        enum:
+          - dev
+          - test
+        default: dev
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: oauth2
+      x-bearerFormat: DPoP
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.current.bankid.no/auth/realms/current/protocol/openid-connect/token
+          scopes:
+            esign/b2b: Opens the B2B signing service for b2b orders
+
+  schemas:
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error code
+        error_description:
+          type: string
+          description: Error description
+        error_reference:
+          type: string
+          description: Error reference for further investigation
+
+    BidXml:
+      type: object
+      required:
+        - xml
+        - xsl
+      properties:
+        xml:
+          type: string
+          description: XML. Must be used together with "xsl".
+          minLength: 1
+          maxLength: 5000000 # TODO check maxLength
+        xsl:
+          type: string
+          description: XML Stylesheet. Must be used together with "xml".
+          minLength: 1
+          maxLength: 5000000 # TODO check maxLength
+
+    TbsHash:
+      type: object
+      required:
+        - hash
+        - mime_type
+        - description
+      properties:
+        hash:
+          type: string
+          description: Base64 encoded value of a SHA256 hash
+          minLength: 44
+          maxLength: 44
+        mime_type:
+          $ref: "#/components/schemas/MimeType"
+        description:
+          type: string
+          description: Description of document used as merchantDesc in sdo Metadata
+          maxLength: 128
+
+    TbsDocument:
+      type: object
+      required:
+        - description
+      oneOf:
+        - required: [text_to_sign]
+        - required: [pdf]
+        - required: [bidxml]
+      properties:
+        description:
+          type: string
+          description: Description of document, will be used as merchantDesc in sdo Metadata
+          minLength: 1
+          maxLength: 100
+        text_to_sign:
+          type: string
+          description: String to be signed, for hashing, bytes to sign will be `textToSign.getBytes(StandardCharsets.ISO_8859_1)`
+          minLength: 1
+          maxLength: 5000000 # TODO check maxLength
+        pdf:
+          type: string
+          description: Base64 encoded PDF.
+          minLength: 1
+          maxLength: 5000000 # TODO check maxLength
+        bidxml:
+          $ref: "#/components/schemas/BidXml"
+
+    HashAndSdo:
+      type: object
+      required:
+        - signed_hash
+        - sdo
+      properties:
+        signed_hash:
+          type: string
+          description: Base64 encoded hash of the document signed
+        sdo:
+          type: string
+          description: Base64 encoded value of the sealed sdo. If given, document data included in the SDO.
+    HashAndCms:
+      type: object
+      required:
+        - signed_hash
+        - cms
+      properties:
+        signed_hash:
+          type: string
+          description: Base64 encoding of the hash signed
+        cms:
+          type: string
+          description: Base64 encoded value of cms/pkcs7 signing result
+    CmsAndOcsp:
+      type: object
+      required:
+        - cms
+        - ocsp
+      properties:
+        cms:
+          type: string
+          description: Base64 encoded value of cms/pkcs7 result
+        ocsp:
+          type: string
+          description: Base64 encoding of the ocsp used by the signer in the cms
+    MimeType:
+      type: string
+      enum:
+        - text/plain
+        - application/pdf
+        - text/BIDXML
+  responses:
+    C-200-sdo:
+      description: Sign order handled. Hashes or documents signed and sdo created
+      content:
+        application/json:
+          schema:
+            type: array
+            description: Array of sign results, one for each hash in the same order as the hashes or documents in the signing request.
+            items:
+              $ref: "#/components/schemas/HashAndSdo"
+    C-200-cms:
+      description: Sign order handled. Hashes or documents signed, no sdo but CMS created
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              client_ocsp:
+                type: string
+                description: Base64 encoded OCSP response for the oidcClient
+              sign_results:
+                type: array
+                description: Array of sign results, one for each hash in the same order as the hashes or documents in the signing request.
+                items:
+                  $ref: "#/components/schemas/HashAndCms"
+    C-400:
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    C-401:
+      description: Access token is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    C-403:
+      description: Access token does not authorize.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+  requestBodies:
+    FromHashesRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - tbsHashes
+            properties:
+              tbs_hashes:
+                type: array
+                description: JSON array of SHA256 hashes to be signed
+                minItems: 1
+                maxItems: 15
+                items:
+                  $ref: "#/components/schemas/TbsHash"
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v0/b2b/sdo_from_hash:
+    post:
+      tags:
+        - b2bSign
+      operationId: sdoFromHash
+      summary: Sign a hash, return an sdo
+      description: |
+        - Sign a hash
+        - Build an sdo
+        - Use merchant certificate assigned to the oidc client for signing
+        - To validate, the client must add the SignedObject to the SDO
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hash:
+                  type: string
+                  minLength: 44
+                  maxLength: 44
+                  description: Base64 encoded Sha256 of bytes to sign
+                description:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                  description: Description of document used as merchantDesc in sdo Metadata
+                mime_type:
+                  $ref: "#/components/schemas/MimeType"
+              required:
+                - hash
+                - description
+                - mime_type
+      responses:
+        "200":
+          description: Sign order handled, ocsp for oidcClient retrieved, hash signed and sdo created (SignedObject must be added to the SDO)
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HashAndSdo"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/sdos_from_hashes:
+    post:
+      tags:
+        - b2bSign
+      operationId: sdosFromHashes
+      summary: Sign a sequence of hashes, returns sdos
+      description: |
+        - Sign a sequence of hashes
+        - Builds one sdo for each hash
+        - To validate, each must be extended on client side with the SignedObject structure (actual signed document)
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/FromHashesRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/C-200-sdo"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/cmses_from_hashes:
+    post:
+      tags:
+        - b2bSign
+      operationId: cmsesFromHashes
+      summary: Sign a sequence of hashes, return cmses
+      description: |
+        - Sign a sequence of hashes
+        - Builds one cms for each hash
+        - Adds the ocsp for the oidc client to the result.
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/FromHashesRequest"
+
+      responses:
+        "200":
+          $ref: "#/components/responses/C-200-cms"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/sdo_from_text:
+    post:
+      tags:
+        - b2bSign
+      operationId: sdoFromText
+      summary: Sign a text, build an sdo
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text_to_sign
+                - description
+              properties:
+                text_to_sign:
+                  type: string
+                  minLength: 1
+                  maxLength: 5000000 # TODO check maxLength
+                  description: String to be signed, for hashing, bytes to sign will be `textToSign.getBytes(StandardCharsets.ISO_8859_1)`
+                description:
+                  type: string
+                  minLength: 1
+                  maxLength: 128
+                  description: Description of signTxt used as merchantDesc in sdo Metadata
+
+      responses:
+        "200":
+          description: Sign done, ocsp for oidcClient retrieved, hash signed and sdo created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HashAndSdo"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/sdos_from_docs:
+    post:
+      tags:
+        - b2bSign
+      operationId: sdosFromDocuments
+      summary: Sign a sequence of documents and build sdos.
+      description: |
+        - Sign a sequence of documents 
+        - Build one sdo for each document
+        - Use merchant certificate assigned to the oidc client for signing
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tbs_documents
+              properties:
+                tbs_documents:
+                  type: array
+                  description: JSON array of documents to be signed (minimum one). The document to be signed is represented as a JSON object. Each document must provide a value for either "text", "pdf" or the pair "xml" and "xsl".
+                  minItems: 1
+                  maxItems: 15
+                  items:
+                    $ref: "#/components/schemas/TbsDocument"
+
+      responses:
+        "200":
+          $ref: "#/components/responses/C-200-sdo"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+  /v0/b2b/sdo_from_cmses:
+    post:
+      tags:
+        - b2bSign
+      operationId: sdoFromCmses
+      summary: Pack and seal an sdo
+      description: |
+        - Build an sdo from a sequence of CMS-es together with their corresponding OCSPs.
+        - Seal the SDO.
+        - The CMS-es must be the result of signing the same document, only SHA256WithRSA is supported.
+        - One of the real document or the document's mimeType must be included in the request.
+          - If document included, the document data will be included in the SDO.
+          - If not included, the sdo must be completed on client side.
+      security:
+        - bearerAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - cms_and_ocsps
+              oneOf:
+                - required: [document]
+                - required: [mime_type, description]
+              properties:
+                cms_and_ocsps:
+                  type: array
+                  description: JSON array of the signatures and corresponding ocsps to pack together in the sdo result
+                  minItems: 1
+                  maxItems: 15
+                  items:
+                    $ref: "#/components/schemas/CmsAndOcsp"
+                mime_type:
+                  $ref: "#/components/schemas/MimeType"
+                description:
+                  type: string
+                  description: Description of document when document is not included in the request
+                  maxLength: 128
+                document:
+                  $ref: "#/components/schemas/TbsDocument"
+
+      responses:
+        "200":
+          description: Sdo building done, hash for document and sdo returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HashAndSdo"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"

@@ -1,0 +1,43 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+Actor Customer as customer #green
+participant ClientApp as client #green
+database CustomerDB as db #green
+participant BankIDOIDC as oidc
+participant B2BSigner as signer
+participant BankIDServer as bidj
+participant BankIDVault as certstore
+
+title How to define and use a client for B2B signing with BankID OIDC
+== init ==
+customer -> oidc: register client for esign/b2b, possibly register pki
+oidc -> certstore: create bankid-cert for client-id
+certstore -> certstore: create bankid keypair ....
+oidc -> oidc: create client
+oidc --> customer: client-id, client-secret
+customer -> db: store client-id, client-secret or pki
+client -> client: create keys for DPoP
+
+== use ==
+client -> db: get client-id, client-secret or pki
+client -> client: create DPoP proof for oidc
+client -> oidc: authenticate (client-id,client-secret or pki, dpop) with esign/b2b
+oidc --> client: signed access_token with esign/b2b (dpop bound)
+client -> client: create DPoP proof for signer
+client -> signer: sign document (access_token, dpop proof, documents or hashes)
+signer -> signer: verify access_token and dop proof
+signer -> signer: create hash
+signer -> bidj: sign hash using bankid-cert for given client-id
+bidj -> bidj: get OCSP for signer cert from VA
+bidj -> certstore: sign each hash for client
+certstore -> certstore: sign with private bankid key(client-id)
+certstore --> bidj: cms-signatures
+bidj --> signer: cms-signatures, OCSP
+signer -> signer: build sdos from cms,docs,ocsp
+signer --> client: sdos
+
+
+
+@enduml
