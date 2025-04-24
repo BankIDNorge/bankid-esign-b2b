@@ -6,7 +6,7 @@ public class BankIDOIDCServers {
             "https://auth.current.bankid.no/auth/realms/current",
             "clientId",
             "clientSecret",
-            "https://sign.current.bankid.no"
+            "https://api.preprod.esign-stoetest.cloud"
     );
 
     public record OIDCServerSpec(

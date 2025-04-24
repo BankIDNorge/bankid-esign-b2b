@@ -15,7 +15,7 @@ Update `src/main/java/no/bankid/esign/merchant/b2b/environment/BankIDOIDCServers
         "https://auth.current.bankid.no/auth/realms/current",
         "clientId",
         "clientSecret",
-        "https://sign.current.bankid.no"
+        "https://api.preprod.esign-stoetest.cloud"
     );
 ```
 - The program will use the `clientId` and `clientSecret` to authenticate with the BankID OIDC server.
