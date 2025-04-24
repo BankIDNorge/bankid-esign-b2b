@@ -3,17 +3,19 @@
          xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
+
     <parent>
         <groupId>no.bankid</groupId>
-        <artifactId>esign-b2b</artifactId>
+        <artifactId>bankid-esign-b2b</artifactId>
         <version>1.0.0-SNAPSHOT</version>
     </parent>
 
+    <!-- Generates code to be used by pure java feign clients, not using spring boot -->
+    <groupId>no.bankid.esign</groupId>
+    <artifactId>b2b-api-for-feign</artifactId>
+    <version>${b2b-api-for-feign.version}</version>
+
     <properties>
-        <java.version>17</java.version>
-        <maven.compiler.source>17</maven.compiler.source>
-        <maven.compiler.target>17</maven.compiler.target>
-        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
         <openapi-generator-maven-plugin.version>7.11.0</openapi-generator-maven-plugin.version>
         <swagger.version>2.1.5</swagger.version>
         <feign.version>13.5</feign.version>
@@ -78,15 +80,14 @@
             <artifactId>jakarta.annotation-api</artifactId>
             <version>${jakarta.annotation.version}</version>
         </dependency>
+        <dependency>
+            <groupId>org.junit.jupiter</groupId>
+            <artifactId>junit-jupiter-api</artifactId>
+            <version>5.12.2</version>
+        </dependency>
     </dependencies>
 
 
-    <!-- Generates code to be used by pure java feign clients, not using spring boot -->
-    <groupId>no.bankid.esign</groupId>
-    <artifactId>b2b-api-public-java-feign</artifactId>
-    <version>0.0.1-SNAPSHOT</version>
-
-    <name>b2b-api-java-feign</name>
 
     <build>
         <plugins>
@@ -102,7 +103,7 @@
                         </goals>
                         <configuration>
                             <inputSpec>
-                                ${project.basedir}/../src/main/resources/b2b-bankid-signer.external.yaml <!-- TODO Change to http link to openapi file on developer.bankid.no/... -->
+                                ${project.basedir}/b2b-bankid-signer.external.yaml <!-- TODO Change to http link to openapi file on developer.bankid.no/... -->
                             </inputSpec>
                             <modelPackage>no.bankid.esign.feign.api.b2b.v0.model</modelPackage>
                             <apiPackage>no.bankid.esign.feign.api.b2b.v0.api</apiPackage>

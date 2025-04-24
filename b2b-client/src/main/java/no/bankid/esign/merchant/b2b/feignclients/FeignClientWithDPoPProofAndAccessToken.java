@@ -1,12 +1,13 @@
 package no.bankid.esign.merchant.b2b.feignclients;
 
-import static no.bankid.esign.merchant.b2b.feignclients.InterceptingFeignClient.injectAccessOrBasicAndDPoPProof;
-
 import com.nimbusds.oauth2.sdk.token.DPoPAccessToken;
+import no.bankid.esign.merchant.b2b.dpop.DPoPGenerator;
+
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.util.Base64;
-import no.bankid.esign.merchant.b2b.dpop.DPoPGenerator;
+
+import static no.bankid.esign.merchant.b2b.feignclients.InterceptingFeignClient.injectAccessOrBasicAndDPoPProof;
 
 public class FeignClientWithDPoPProofAndAccessToken<ClientType> {
 

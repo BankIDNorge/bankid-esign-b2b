@@ -5,15 +5,16 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.ObjectWriter;
 import com.nimbusds.jwt.JWT;
 import com.nimbusds.jwt.JWTParser;
-import java.io.StringWriter;
-import java.text.ParseException;
-import java.util.Map;
+
 import javax.xml.transform.OutputKeys;
 import javax.xml.transform.Transformer;
 import javax.xml.transform.TransformerException;
 import javax.xml.transform.TransformerFactory;
 import javax.xml.transform.stream.StreamResult;
 import javax.xml.transform.stream.StreamSource;
+import java.io.StringWriter;
+import java.text.ParseException;
+import java.util.Map;
 
 public class PrettyPrint {
 
