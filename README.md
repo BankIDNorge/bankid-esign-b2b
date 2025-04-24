@@ -2,6 +2,8 @@
 
 This is an example application that demonstrates how to use the BankID B2B Signing API.
 
+**API NOT YET AVAILABLE IN PREPROD OR PRODUCTION. ETA FOR PREPROD IS END OF MAY**
+
 **This project is not actively maintained.** It is provided as a reference implementation and may not be up to date with the latest changes in the BankID API.
 
 ## Documentation
