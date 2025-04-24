@@ -3,9 +3,10 @@ package no.bankid.esign.merchant.b2b.feignclients;
 import feign.Feign;
 import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
-import java.net.URI;
 import no.bankid.esign.feign.api.b2b.v0.api.B2bSignApi;
 import no.bankid.esign.merchant.b2b.dpop.DPoPGenerator;
+
+import java.net.URI;
 
 public class B2BSigner {
 

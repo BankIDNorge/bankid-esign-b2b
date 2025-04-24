@@ -1,5 +1,16 @@
 package no.bankid.esign.merchant.b2b;
 
+import no.bankid.esign.feign.api.b2b.v0.model.*;
+import no.bankid.esign.merchant.b2b.dpop.DPoPGenerator;
+import no.bankid.esign.merchant.b2b.dpop.NullDPopGenerator;
+import no.bankid.esign.merchant.b2b.dpop.RS256DPopGenerator;
+import no.bankid.esign.merchant.b2b.environment.BankIDOIDCServers;
+import no.bankid.esign.merchant.b2b.environment.BankIDOIDCServers.OIDCServerSpec;
+import no.bankid.esign.merchant.b2b.feignclients.*;
+import no.bankid.esign.merchant.b2b.feignclients.OAuth2TokenApi.TokenResponse;
+import no.bankid.esign.merchant.b2b.feignclients.OpenIDWellKnownApi.OpenIDConfig;
+
+import java.io.IOException;
 import java.net.URI;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -9,23 +20,6 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.List;
-import no.bankid.esign.feign.api.b2b.v0.model.CmsAndOcsp;
-import no.bankid.esign.feign.api.b2b.v0.model.SdoFromCmsesRequest;
-import no.bankid.esign.feign.api.b2b.v0.model.SdoFromTextRequest;
-import no.bankid.esign.feign.api.b2b.v0.model.SdosFromDocumentsRequest;
-import no.bankid.esign.feign.api.b2b.v0.model.TbsDocument;
-import no.bankid.esign.merchant.b2b.dpop.DPoPGenerator;
-import no.bankid.esign.merchant.b2b.dpop.NullDPopGenerator;
-import no.bankid.esign.merchant.b2b.dpop.RS256DPopGenerator;
-import no.bankid.esign.merchant.b2b.environment.BankIDOIDCServers;
-import no.bankid.esign.merchant.b2b.environment.BankIDOIDCServers.OIDCServerSpec;
-import no.bankid.esign.merchant.b2b.feignclients.B2BSigner;
-import no.bankid.esign.merchant.b2b.feignclients.FeignClientWithDPoPProofAndAccessToken;
-import no.bankid.esign.merchant.b2b.feignclients.InterceptingFeignClient;
-import no.bankid.esign.merchant.b2b.feignclients.OAuth2TokenApi;
-import no.bankid.esign.merchant.b2b.feignclients.OAuth2TokenApi.TokenResponse;
-import no.bankid.esign.merchant.b2b.feignclients.OpenIDWellKnownApi;
-import no.bankid.esign.merchant.b2b.feignclients.OpenIDWellKnownApi.OpenIDConfig;
 
 public class B2BMiniExample {
 
@@ -74,7 +68,12 @@ public class B2BMiniExample {
             String fn = fns[i];
             Path filePath = Paths.get("src/main/resources/" + fn);
 
-            byte[] fileContent = Files.readAllBytes(filePath);
+            byte[] fileContent = null;
+            try {
+                fileContent = Files.readAllBytes(filePath);
+            } catch (IOException e) {
+                throw new RuntimeException("Working directory should be the 'b2b-client' directory to find the example files", e);
+            }
 
             TbsDocument tbsDocumentsItem = new TbsDocument()
                 .pdf(Base64.getEncoder().encodeToString(fileContent))
@@ -152,7 +151,7 @@ public class B2BMiniExample {
     }
 
     // TODO: when changing bankIDOIDCServer, remember to change urls in other components such as MBE AND Composite IDP
-    private final OIDCServerSpec bankIDOIDCServer = BankIDOIDCServers.bankIDOidcAtTest;
+    private final OIDCServerSpec bankIDOIDCServer = BankIDOIDCServers.bankIDOidcServer;
 
     final OpenIDConfig openIDConfig;
     final FeignClientWithDPoPProofAndAccessToken<OAuth2TokenApi> oAuth2TokenApi;
@@ -174,6 +173,6 @@ public class B2BMiniExample {
         this.oAuth2TokenApi = OAuth2TokenApi.create(openIDConfig.token_endpoint, dPoPGenerator);
 
 
-        this.b2bSigner = new B2BSigner("http://localhost:8080", dPoPGenerator);
+        this.b2bSigner = new B2BSigner(bankIDOIDCServer.b2bSignerRootUrl(), dPoPGenerator);
     }
 }

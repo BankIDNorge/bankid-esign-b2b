@@ -1,13 +1,14 @@
 package no.bankid.esign.merchant.b2b.feignclients;
 
-import static no.bankid.esign.merchant.b2b.PrettyPrint.prettyPrintJWT;
-
 import feign.Client;
 import feign.Request;
 import feign.Response;
+
 import java.io.IOException;
 import java.util.Collection;
 import java.util.Map;
+
+import static no.bankid.esign.merchant.b2b.PrettyPrint.prettyPrintJWT;
 
 /**
  * This class is a Feign client that intercepts the request and response and adds the necessary headers for OAuth2 and DPoP.
