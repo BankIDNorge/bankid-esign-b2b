@@ -27,16 +27,31 @@ public class B2BSigner {
         return sdosFromDocsUri;
     }
 
+    public URI cmsesFromHashesUri() {
+        return cmsesFromHashesUri;
+    }
+
+    public URI padesCmsesFromHashesUri() {
+        return padesCmsesFromHashesUri;
+    }
+
+
     final String b2bSignerRoot;
     final URI sdoFromTextUri;
     final URI sdoFromCmsUri;
     final URI sdosFromDocsUri;
+    final URI cmsesFromHashesUri;
+    final URI padesCmsesFromHashesUri;
+
 
     public B2BSigner(String b2bSignerRootUrl, DPoPGenerator dPoP) {
         this.b2bSignerRoot = b2bSignerRootUrl;
         this.sdoFromTextUri = URI.create(b2bSignerRoot + "/v0/b2b/sdo_from_text");
         this.sdoFromCmsUri = URI.create(b2bSignerRoot + "/v0/b2b/sdo_from_cmses");
         this.sdosFromDocsUri = URI.create(b2bSignerRoot + "/v0/b2b/sdos_from_docs");
+        this.cmsesFromHashesUri = URI.create(b2bSignerRoot + "/v0/b2b/cmses_from_hashes");
+        this.padesCmsesFromHashesUri = URI.create(b2bSignerRoot + "/v0/b2b/pades/cmses_from_hashes");
+
         this.b2bSignApi = new FeignClientWithDPoPProofAndAccessToken<>(dPoP, Feign.builder()
             .client(new InterceptingFeignClient("B2BSigner"))
             .encoder(new JacksonEncoder())

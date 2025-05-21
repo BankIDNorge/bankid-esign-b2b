@@ -147,7 +147,7 @@ replay_pid*
 # Icon must end with two \r
 Icon
 
-/b2b-api-public-feign/target/
+/b2b-api-for-feign/target/
 # Thumbnails
 ._*
 

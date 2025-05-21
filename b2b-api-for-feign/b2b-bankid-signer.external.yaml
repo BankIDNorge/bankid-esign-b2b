@@ -115,6 +115,7 @@ components:
         sdo:
           type: string
           description: Base64 encoded value of the sealed sdo. If given, document data included in the SDO.
+
     HashAndCms:
       type: object
       required:
@@ -127,6 +128,18 @@ components:
         cms:
           type: string
           description: Base64 encoded value of cms/pkcs7 signing result
+
+    HashList:
+      type: array
+      description: JSON array of SHA256 hashes to be signed
+      minItems: 0
+      maxItems: 15
+      items:
+        type: string
+        description: Base64 encoded value of a SHA256 hash
+        minLength: 44
+        maxLength: 44
+
     CmsAndOcsp:
       type: object
       required:
@@ -188,6 +201,7 @@ components:
         application/json:
           schema:
             $ref: "#/components/schemas/ErrorResponse"
+
   requestBodies:
     FromHashesRequest:
       required: true
@@ -196,7 +210,7 @@ components:
           schema:
             type: object
             required:
-              - tbsHashes
+              - tbs_hashes
             properties:
               tbs_hashes:
                 type: array
@@ -205,6 +219,13 @@ components:
                 maxItems: 15
                 items:
                   $ref: "#/components/schemas/TbsHash"
+
+    HashesOnlyRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HashList"
 
 security:
   - bearerAuth: []
@@ -295,7 +316,34 @@ paths:
       security:
         - bearerAuth: []
       requestBody:
-        $ref: "#/components/requestBodies/FromHashesRequest"
+        $ref: "#/components/requestBodies/HashesOnlyRequest"
+
+      responses:
+        "200":
+          $ref: "#/components/responses/C-200-cms"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/pades/cmses_from_hashes:
+    post:
+      tags:
+        - b2bSign
+      operationId: padesCmsesFromHashes
+      summary: | 
+        Sign a sequence of hashes, return cmses, use formats compatible with PAdES, 
+        i.e. the CMS and OCSP results are compatible with ISO320001 (PAdES) and RFC6960 respectively.
+      description: |
+        - Sign a sequence of hashes
+        - Builds one cms for each hash
+        - Adds the ocsp for the oidc client to the result.
+      security:
+        - bearerAuth: []
+      requestBody:
+        $ref: "#/components/requestBodies/HashesOnlyRequest"
 
       responses:
         "200":
