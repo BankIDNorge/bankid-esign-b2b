@@ -103,8 +103,7 @@
                         </goals>
                         <configuration>
                             <inputSpec>
-                                ${project.basedir}/b2b-bankid-signer.external.yaml <!-- TODO Change to http link to openapi file on developer.bankid.no/... -->
-                            </inputSpec>
+                                https://developer.bankid.no/bankid-esign-provider/apis/b2b/v0/b2b-bankid-signer.external.yaml                            </inputSpec>
                             <modelPackage>no.bankid.esign.feign.api.b2b.v0.model</modelPackage>
                             <apiPackage>no.bankid.esign.feign.api.b2b.v0.api</apiPackage>
                             <generatorName>java</generatorName>
