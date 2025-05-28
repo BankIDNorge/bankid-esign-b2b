@@ -16,10 +16,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Base64;
-import java.util.List;
+import java.security.MessageDigest;
+import java.util.*;
 
 public class B2BMiniExample {
 
@@ -30,6 +28,11 @@ public class B2BMiniExample {
         test.doBuildSdoFromCms(0,2,1,3,2,2,2);
         test.doBuildSdoFromCms(0,2,4,1,3,5);
         test.doSomePdfSigning("small-ex.pdf", "csc-pades-demo.pdf");
+
+        String hash1 = sha256("Olav den hellige og æren.");
+        String hash2 = sha256("Juletrær har vi egentlig nok av");
+        test.doAHashSigningStandardFormat(hash1, hash2);
+        test.doAHashSigningPAdESFormat(hash1, hash2);
     }
 
     /**
@@ -90,6 +93,33 @@ public class B2BMiniExample {
             .forEach(hashAndSdo -> dumpSdo(hashAndSdo.getSdo()));
     }
 
+    private void doAHashSigningPAdESFormat(String ... hashes) {
+        TokenResponse tokenResponse = getAccessTokenFromKeycloak();
+
+        CmsesFromHashes200Response cmsesFromHashes200Response = b2bSigner.b2BSignApi()
+                .withATAndDPoP(tokenResponse.access_token, b2bSigner.padesCmsesFromHashesUri())
+                .padesCmsesFromHashes(Arrays.asList(hashes));
+        dumpCmsFromHashes("Pades", cmsesFromHashes200Response);
+    }
+
+    private void doAHashSigningStandardFormat(String ... hashes) {
+        TokenResponse tokenResponse = getAccessTokenFromKeycloak();
+
+        CmsesFromHashes200Response cmsesFromHashes200Response = b2bSigner.b2BSignApi()
+                .withATAndDPoP(tokenResponse.access_token, b2bSigner.cmsesFromHashesUri())
+                .cmsesFromHashes(Arrays.asList(hashes));
+
+        dumpCmsFromHashes("BankID", cmsesFromHashes200Response);
+
+    }
+
+    private static void dumpCmsFromHashes(String type, CmsesFromHashes200Response cmsesFromHashes200Response) {
+        cmsesFromHashes200Response.getSignResults().forEach(hashAndCms -> {
+            System.out.println(type + " Hash: " + hashAndCms.getSignedHash());
+            System.out.println(type + " CMS: " + hashAndCms.getCms());
+        });
+        System.out.println(type + " OCSP: " + cmsesFromHashes200Response.getClientOcsp());
+    }
 
     /**
      * Builds an SDO from a set of existing signatures and ocsp responses.
@@ -175,4 +205,14 @@ public class B2BMiniExample {
 
         this.b2bSigner = new B2BSigner(bankIDOIDCServer.b2bSignerRootUrl(), dPoPGenerator);
     }
+    public static String sha256(String someString) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            byte[] hash = digest.digest(someString.getBytes(StandardCharsets.ISO_8859_1));
+            return Base64.getEncoder().encodeToString(hash);
+        } catch (Exception ex) {
+            throw new RuntimeException(ex);
+        }
+    }
+
 }
