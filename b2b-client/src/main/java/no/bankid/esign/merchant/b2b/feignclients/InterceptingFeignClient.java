@@ -45,6 +45,11 @@ public class InterceptingFeignClient extends Client.Default {
             currentTokenContainer.remove();
             if (traceTokens) {
                 traceAndPrettyPrintTokens(request.url(), tokens);
+                byte[] body = request.body();
+                if (body != null && body.length > 0) {
+                    String bodyString = new String(body);
+                    System.out.println("Body:" + bodyString);
+                }
             }
             if (tokens.basicAuth != null) {
                 request.header("Authorization", "Basic " + tokens.basicAuth());
