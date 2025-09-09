@@ -6,9 +6,12 @@ import feign.Feign;
 import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
 import no.bankid.esign.feign.api.b2b.v0.api.B2bSignApi;
+import no.bankid.esign.feign.api.b2b.v0.model.BidXml;
+import no.bankid.esign.feign.api.b2b.v0.model.MimeType;
 import no.bankid.esign.feign.api.b2b.v0.model.SdoFromCmsesRequest;
 import no.bankid.esign.feign.api.b2b.v0.model.TbsDocument;
 import no.bankid.esign.merchant.b2b.dpop.DPoPGenerator;
+import org.jetbrains.annotations.NotNull;
 
 import java.net.URI;
 
@@ -65,7 +68,7 @@ public class B2BSigner {
 
     /**
      * Openapi generation using fein library sets ALWAYS on every property
-     * This method returns an objectmapper skipping null values.
+     * This method returns an objectmapper skipping generation of null values when serializing to json
      */
     private ObjectMapper feignObjectMapper() {
         ObjectMapper objectMapper = new ObjectMapper();
@@ -77,4 +80,59 @@ public class B2BSigner {
 
     }
 
+    /**
+     * Helper class for objectmapper overriding serialization set in original class.
+     * Override those methods that are marked with Include.ALWAYS in super if null-generation shall be skipped
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public abstract static class TbsDocumentWithNoNullOutput extends TbsDocument {
+        @NotNull
+        @Override
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public String getTextToSign() {
+            return super.getTextToSign();
+        }
+
+        @NotNull
+        @Override
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public String getDescription() {
+            return super.getDescription();
+        }
+
+        @NotNull
+        @Override
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public String getPdf() {
+            return super.getPdf();
+        }
+
+        @NotNull
+        @Override
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public BidXml getBidxml() {
+            return super.getBidxml();
+        }
+    }
+
+    /**
+     * Helper class for objectmapper overriding serialization set in original class.
+     * Override those methods that are marked with Include.ALWAYS in super if null-generation shall be skipped
+     */
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    public static class SdoFromCmsesRequestNullOutput extends SdoFromCmsesRequest {
+        @NotNull
+        @Override
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public MimeType getMimeType() {
+            return super.getMimeType();
+        }
+
+        @NotNull
+        @Override
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public String getDescription() {
+            return super.getDescription();
+        }
+    }
 }
