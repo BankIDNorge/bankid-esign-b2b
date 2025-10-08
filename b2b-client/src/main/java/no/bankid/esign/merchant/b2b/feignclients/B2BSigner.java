@@ -121,6 +121,14 @@ public class B2BSigner {
      */
     @JsonInclude(JsonInclude.Include.NON_NULL)
     public static class SdoFromCmsesRequestNullOutput extends SdoFromCmsesRequest {
+
+        @NotNull
+        @Override
+        @JsonInclude(JsonInclude.Include.NON_NULL)
+        public TbsDocument getDocument() {
+            return super.getDocument();
+        }
+
         @NotNull
         @Override
         @JsonInclude(JsonInclude.Include.NON_NULL)

@@ -1,5 +1,6 @@
 package no.bankid.esign.merchant.b2b;
 
+import com.nimbusds.jose.JWSHeader;
 import no.bankid.esign.feign.api.b2b.v0.model.*;
 import no.bankid.esign.merchant.b2b.dpop.DPoPGenerator;
 import no.bankid.esign.merchant.b2b.dpop.NullDPopGenerator;
@@ -17,13 +18,19 @@ import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Base64;
+import java.util.List;
+
+import static no.bankid.esign.merchant.b2b.environment.BankIDOIDCServers.AuthType.PRIVATE_KEY_JWT;
 
 public class B2BMiniExample {
 
     public static void main(String[] args) throws Exception {
         B2BMiniExample test = new B2BMiniExample();
         InterceptingFeignClient.traceTokens = true;
+        test.showPublicKeyJwk();
         test.doASimpleTextSigning();
         test.doBuildSdoFromCms(0,2,1,3,2,2,2);
         test.doBuildSdoFromCms(0,2,4,1,3,5);
@@ -33,6 +40,17 @@ public class B2BMiniExample {
         String hash2 = sha256("Juletrær har vi egentlig nok av");
         test.doAHashSigningStandardFormat(hash1, hash2);
         test.doAHashSigningPAdESFormat(hash1, hash2);
+    }
+
+    /**
+     * Shows the public key to register in BankID OIDC when client is using private_key_jwt authentication
+     */
+    private void showPublicKeyJwk() {
+        if (bankIDOIDCServer.authType() != PRIVATE_KEY_JWT) {
+            System.out.println("Client " + bankIDOIDCServer.clientId() + " does not use private_key_jwt authentication");
+            return;
+        }
+        System.out.println("\nFor client " + bankIDOIDCServer.clientId() + " using BankID OIDC at " + bankIDOIDCServer.oidcRoot() + " register this key in BankID OIDC:\n" + PrettyPrint.prettyPrintJson(bankIDOIDCServer.privateKeyAssertionBuilder().getPublicKeyAsJsonMap()) + "\n");
     }
 
     /**
@@ -162,25 +180,47 @@ public class B2BMiniExample {
             new String(Base64.getDecoder().decode(sdoB64), StandardCharsets.UTF_8)));
     }
 
-    /**
-     * Get an access token from the BankID OIDC server.
-     * For this example Basic Authentication is sufficient for the token endpoint.
-     * <p>
-     * For production, private_key_jwt authentication method will be required.
-     */
     private TokenResponse getAccessTokenFromKeycloak() {
+        if (BankIDOIDCServers.bankIDOidcServer.authType() == PRIVATE_KEY_JWT) {
+            return getAccessTokenFromKeycloakPrivateKeyJwt();
+        } else {
+            return getAccessTokenFromKeycloakBasicAuth();
+        }
+    }
+    /**
+     * Get an access token from the BankID OIDC server using basic authentication
+     */
+    private TokenResponse getAccessTokenFromKeycloakBasicAuth() {
         return oAuth2TokenApi
             .withBasicAndDPoP(
                 bankIDOIDCServer.clientId(),
                 bankIDOIDCServer.clientSecret(),
                 URI.create(openIDConfig.token_endpoint))
-            .getToken(
+                .getTokenBasic(
             "client_credentials",
             "esign/b2b"
         );
     }
 
-    // TODO: when changing bankIDOIDCServer, remember to change urls in other components such as MBE AND Composite IDP
+    /**
+     * Get an access token from the BankID OIDC server using private key authentication
+     */
+    private TokenResponse getAccessTokenFromKeycloakPrivateKeyJwt() {
+        // We must build a signed JWT to use as client_assertion
+        // The signing is using the PrivateKeyAssertionBuilder built on the private key of the clientId
+        // The public key is registered in the OIDC server
+
+        return oAuth2TokenApi
+                .withDPoP(URI.create(openIDConfig.token_endpoint))
+                .getTokenPrivateKeyJwt(
+                        "urn:ietf:params:oauth:client-assertion-type:jwt-bearer",
+                        bankIDOIDCServer.privateKeyAssertionBuilder()
+                                .buildAssertion(bankIDOIDCServer.clientId(), URI.create(openIDConfig.token_endpoint)),
+                        "client_credentials",
+                        "esign/b2b"
+                );
+    }
+
     private final OIDCServerSpec bankIDOIDCServer = BankIDOIDCServers.bankIDOidcServer;
 
     final OpenIDConfig openIDConfig;

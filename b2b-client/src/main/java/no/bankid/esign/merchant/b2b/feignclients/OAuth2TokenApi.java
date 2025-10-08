@@ -11,19 +11,36 @@ import no.bankid.esign.merchant.b2b.dpop.DPoPGenerator;
 public interface OAuth2TokenApi {
 
     /**
-     * The client secret is allowed to be in the body,
-     * client_secret_basic demands the client_secret in the header.
-     * client_secret_post demands the client_secret in the body.
-     * Keycloak seems to support both (automatically).
-     * @param grantType
-     * @param scope
-     * @return
+     * Sends the grant_type and scope as form parameters, authorizes using Basic Auth, that is
+     * client_id,client_secret.
+     *
+     * @param grantType should always be "client_credentials"
+     */
+
+    @RequestLine("POST")
+    @Headers("Content-Type: application/x-www-form-urlencoded")
+    TokenResponse getTokenBasic(
+            @Param("grant_type") String grantType,
+            @Param("scope") String scope);
+
+    /**
+     * Sends the client_assertion_type, client_assertion and scope as form parameters.
+     * <p>
+     * See <a
+     * href="https://openid.net/specs/openid-connect-core-1_0.html#ClientAuthentication">OpenID
+     * spec</a> for details.
+     *
+     * @param clientAssertionType should always be
+     * "urn:ietf:params:oauth:client-assertion-type:jwt-bearer"
+     * @param clientAssertion should be a JWT signed with the private key of the client
      */
     @RequestLine("POST")
     @Headers("Content-Type: application/x-www-form-urlencoded")
-    TokenResponse getToken(
-        @Param("grant_type") String grantType,
-        @Param("scope") String scope);
+    TokenResponse getTokenPrivateKeyJwt(
+            @Param("client_assertion_type") String clientAssertionType,
+            @Param("client_assertion") String clientAssertion,
+            @Param("grant_type") String grantType,
+            @Param("scope") String scope);
 
     class TokenResponse {
         public String access_token;
