@@ -114,7 +114,7 @@ public class PrivateKeyAssertionBuilder {
             return retval;
         } catch (KeyStoreException | IOException | NoSuchAlgorithmException | CertificateException |
                  UnrecoverableKeyException | JOSEException e) {
-            throw new RuntimeException("Error getting key from keyStore" + keystorePath, e);
+            throw new RuntimeException("Error getting key from keyStore: " + keystorePath + ", You need to create one", e);
         }
     }
 

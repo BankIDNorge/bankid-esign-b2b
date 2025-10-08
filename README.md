@@ -43,7 +43,7 @@ Update `src/main/java/no/bankid/esign/merchant/b2b/environment/BankIDOIDCServers
         "path-to-your-keystore.jks",
         "your-keystore-password",
         "your-private-key-alias-in-keystore",
-        "https://api.esign-stoedev.cloud"
+        "https://api.preprod.esign-stoetest.cloud"
 );
 
 public final static OIDCServerSpec bankIDOidcServer = bankIDOidcCurrentKeyAuthentication;

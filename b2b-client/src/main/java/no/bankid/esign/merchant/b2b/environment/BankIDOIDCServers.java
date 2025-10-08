@@ -3,6 +3,7 @@ package no.bankid.esign.merchant.b2b.environment;
 import static no.bankid.esign.merchant.b2b.environment.BankIDOIDCServers.AuthType.BASIC;
 import static no.bankid.esign.merchant.b2b.environment.BankIDOIDCServers.AuthType.PRIVATE_KEY_JWT;
 
+@SuppressWarnings("unused")
 public class BankIDOIDCServers {
     public enum AuthType {BASIC, PRIVATE_KEY_JWT}
 
@@ -12,16 +13,16 @@ public class BankIDOIDCServers {
             "path-to-your-keystore.jks",
             "your-keystore-password",
             "your-private-key-alias-in-keystore",
-            "https://api.esign-stoedev.cloud"
+            "https://api.preprod.esign-stoetest.cloud"
     );
     private final static OIDCServerSpec bankIDOidcCurrentPwdAuthentication = serverWithBasicSpec(
             "https://auth.current.bankid.no/auth/realms/current",
             "your-client-id",
             "your-client-secret",
-            "https://api.esign-stoedev.cloud"
+            "https://api.preprod.esign-stoetest.cloud"
     );
 
-
+    // Set this one to the serverspec with the authentication method you can, PrivateKeyJwt required in production
     public final static OIDCServerSpec bankIDOidcServer = bankIDOidcCurrentKeyAuthentication;
 
     /**
@@ -30,10 +31,11 @@ public class BankIDOIDCServers {
      * @param oidcRoot                   The root URL of the BankID OIDC server, e.g. https://auth.current.bankid.no/auth/realms/current
      * @param clientId                   The BankID OIDC client id to use when acquiring tokens
      * @param clientSecret               The client secret to use when acquiring tokens, null if using private_key_jwt
-     * @param b2bSignerRootUrl           The root URL of the B2B signer service, e.g. https://api.esign-stoedev.cloud
+     * @param b2bSignerRootUrl           The root URL of the B2B signer service, e.g. https://api.preprod.esign-stoetest.cloud
      * @param authType                   The authentication type to use, either BASIC or PRIVATE_KEY_JWT
      * @param privateKeyAssertionBuilder The builder that creates the private_key_jwt token, null if using BASIC
      */
+    @SuppressWarnings("JavadocLinkAsPlainText")
     public record OIDCServerSpec(
             String oidcRoot,
             String clientId,
@@ -41,8 +43,6 @@ public class BankIDOIDCServers {
             String b2bSignerRootUrl,
             AuthType authType,
             PrivateKeyAssertionBuilder privateKeyAssertionBuilder) {
-        public OIDCServerSpec {
-        }
     }
 
     /**
