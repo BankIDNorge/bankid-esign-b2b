@@ -5,6 +5,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import feign.Feign;
 import feign.jackson.JacksonDecoder;
 import feign.jackson.JacksonEncoder;
+import no.bankid.esign.feign.api.b2b.csc.api.CscCredentialsApi;
+import no.bankid.esign.feign.api.b2b.csc.api.CscInfoApi;
+import no.bankid.esign.feign.api.b2b.csc.api.CscSignaturesApi;
+import no.bankid.esign.feign.api.b2b.csc.model.*;
 import no.bankid.esign.feign.api.b2b.v0.api.B2bSignApi;
 import no.bankid.esign.feign.api.b2b.v0.model.BidXml;
 import no.bankid.esign.feign.api.b2b.v0.model.MimeType;
@@ -18,9 +22,15 @@ import java.net.URI;
 public class B2BSigner {
 
     final FeignClientWithDPoPProofAndAccessToken<B2bSignApi> b2bSignApi;
+    final FeignClientWithDPoPProofAndAccessToken<B2bCscApi> b2bCscApi;
+
 
     public FeignClientWithDPoPProofAndAccessToken<B2bSignApi> b2BSignApi() {
         return b2bSignApi;
+    }
+
+    public FeignClientWithDPoPProofAndAccessToken<B2bCscApi> b2BCscApi() {
+        return b2bCscApi;
     }
 
     public URI sdoFromTextUri() {
@@ -43,6 +53,23 @@ public class B2BSigner {
     }
 
 
+    public URI cscInfoUri() {
+        return cscInfoUri;
+    }
+
+    public URI cscCredentialsInfoUri() {
+        return cscCredentialsInfoUri;
+    }
+
+    public URI cscCredentialsListUri() {
+        return cscCredentialsListUri;
+    }
+
+    public URI cscSignHashUri() {
+        return cscSignHashUri;
+    }
+
+
     final String b2bSignerRoot;
     final URI sdoFromTextUri;
     final URI sdoFromCmsUri;
@@ -50,6 +77,10 @@ public class B2BSigner {
     final URI cmsesFromHashesUri;
     final URI padesCmsesFromHashesUri;
 
+    final URI cscInfoUri;
+    final URI cscCredentialsInfoUri;
+    final URI cscCredentialsListUri;
+    final URI cscSignHashUri;
 
     public B2BSigner(String b2bSignerRootUrl, DPoPGenerator dPoP) {
         this.b2bSignerRoot = b2bSignerRootUrl;
@@ -59,11 +90,85 @@ public class B2BSigner {
         this.cmsesFromHashesUri = URI.create(b2bSignerRoot + "/v0/b2b/cmses_from_hashes");
         this.padesCmsesFromHashesUri = URI.create(b2bSignerRoot + "/v0/b2b/pades/cmses_from_hashes");
 
+        this.cscCredentialsInfoUri = URI.create(b2bSignerRoot + "/v0/b2b/csc/v2/credentials/info");
+        this.cscCredentialsListUri = URI.create(b2bSignerRoot + "/v0/b2b/csc/v2/credentials/list");
+        this.cscInfoUri = URI.create(b2bSignerRoot + "/v0/b2b/csc/v2/info");
+        this.cscSignHashUri = URI.create(b2bSignerRoot + "/v0/b2b/csc/v2/signatures/signHash");
+
         this.b2bSignApi = new FeignClientWithDPoPProofAndAccessToken<>(dPoP, Feign.builder()
             .client(new InterceptingFeignClient("B2BSigner"))
                 .encoder(new JacksonEncoder(feignObjectMapper()))
             .decoder(new JacksonDecoder())
             .target(B2bSignApi.class, b2bSignerRoot));
+
+        FeignClientWithDPoPProofAndAccessToken<CscInfoApi> cscInfoApi = new FeignClientWithDPoPProofAndAccessToken<>(dPoP, Feign.builder()
+                .client(new InterceptingFeignClient("CscInfoApi"))
+                .encoder(new JacksonEncoder(feignObjectMapper()))
+                .decoder(new JacksonDecoder())
+                .target(CscInfoApi.class, b2bSignerRoot));
+        FeignClientWithDPoPProofAndAccessToken<CscCredentialsApi> cscCredentialsApi = new FeignClientWithDPoPProofAndAccessToken<>(dPoP, Feign.builder()
+                .client(new InterceptingFeignClient("CscCredentialsApi"))
+                .encoder(new JacksonEncoder(feignObjectMapper()))
+                .decoder(new JacksonDecoder())
+                .target(CscCredentialsApi.class, b2bSignerRoot));
+        FeignClientWithDPoPProofAndAccessToken<CscSignaturesApi> cscSignaturesApi = new FeignClientWithDPoPProofAndAccessToken<>(dPoP, Feign.builder()
+                .client(new InterceptingFeignClient("CscSignaturesApi"))
+                .encoder(new JacksonEncoder(feignObjectMapper()))
+                .decoder(new JacksonDecoder())
+                .target(CscSignaturesApi.class, b2bSignerRoot));
+
+        this.b2bCscApi = new FeignClientWithDPoPProofAndAccessToken<>(dPoP,
+                new B2bCscApi() {
+                    @Override
+                    public CscCredentialsList200Response cscCredentialsList(CscCredentialsListRequest credentialsListRequest) {
+                        return cscCredentialsApi.theApi().cscCredentialsList(credentialsListRequest);
+                    }
+
+                    @Override
+                    public ApiResponse<CscCredentialsList200Response> cscCredentialsListWithHttpInfo(CscCredentialsListRequest credentialsListRequest) {
+                        return cscCredentialsApi.theApi().cscCredentialsListWithHttpInfo(credentialsListRequest);
+                    }
+
+                    @Override
+                    public CscInfoGet200Response cscInfo(CscInfoRequest infoRequest) {
+                        return cscInfoApi.theApi().cscInfo(infoRequest);
+                    }
+
+                    @Override
+                    public ApiResponse<CscInfoGet200Response> cscInfoWithHttpInfo(CscInfoRequest infoRequest) {
+                        return cscInfoApi.theApi().cscInfoWithHttpInfo(infoRequest);
+                    }
+
+                    @Override
+                    public CscInfoGet200Response cscInfoGet(String lang) {
+                        return cscInfoApi.theApi().cscInfoGet(lang);
+                    }
+
+                    @Override
+                    public ApiResponse<CscInfoGet200Response> cscInfoGetWithHttpInfo(String lang) {
+                        return cscInfoApi.theApi().cscInfoGetWithHttpInfo(lang);
+                    }
+
+                    @Override
+                    public CscInfoGet200Response cscInfoGet(CscInfoGetQueryParams queryParams) {
+                        return cscInfoApi.theApi().cscInfoGet(queryParams);
+                    }
+
+                    @Override
+                    public ApiResponse<CscInfoGet200Response> cscInfoGetWithHttpInfo(CscInfoGetQueryParams queryParams) {
+                        return cscInfoApi.theApi().cscInfoGetWithHttpInfo(queryParams);
+                    }
+
+                    @Override
+                    public CscSignaturesSignHash200Response cscSignaturesSignHash(CscSignaturesSignHashRequest signaturesSignHashRequest) {
+                        return cscSignaturesApi.theApi().cscSignaturesSignHash(signaturesSignHashRequest);
+                    }
+
+                    @Override
+                    public ApiResponse<CscSignaturesSignHash200Response> cscSignaturesSignHashWithHttpInfo(CscSignaturesSignHashRequest signaturesSignHashRequest) {
+                        return cscSignaturesApi.theApi().cscSignaturesSignHashWithHttpInfo(signaturesSignHashRequest);
+                    }
+                });
     }
 
     /**

@@ -1,14 +1,19 @@
 # BankID B2B Signing example application
 
-This is an example application that demonstrates how to use the BankID B2B Signing API.
+This is example applications that demonstrates how to use the BankID B2B Signing API and the BankID B2B CSC signing API.
 
 **This project is not actively maintained.** It is provided as a reference implementation and may not be up to date with the latest changes in the BankID API.
 
 ## Documentation
-The documentation for the BankID B2B Signing API can be found at [BankID B2B Signing API](https://developer.bankid.no/bankid-esign-provider/apis/b2b/).
+
+The documentation for the BankID B2B Signing API can be found
+at [BankID B2B Signing API](https://developer.bankid.no/bankid-esign-provider/apis/b2b/v0/B2B-Bankid-Signer/).
+The documentation for the BankID B2B CSC signing API can be found
+at [BankID B2B CSC Signing API](https://developer.bankid.no/bankid-esign-provider/apis/b2b/csc/b2b-csc-overview/).
 
 ## Prerequisite 
-- To use the example application, you need to have an OIDC client registered with BankID OIDC.
+
+- To use the example applications, you need to have an OIDC client registered with BankID OIDC.
 - You need to have the `esign/b2b` scope enabled for your client.
 - You need to use `private_key_jwt` authentication method, not `basic`.
 - You also need to use DPoP authentication when calling BankID OIDC and the B2B signing API.
@@ -48,8 +53,8 @@ Update `src/main/java/no/bankid/esign/merchant/b2b/environment/BankIDOIDCServers
 
 public final static OIDCServerSpec bankIDOidcServer = bankIDOidcCurrentKeyAuthentication;
 ```
-  
-- In test environments `basic` may work, but not in production, where `private_key_jwt` is required
+
+- In test environments `basic` authentication may work, but not in production, where `private_key_jwt` is required
 - The example code supports both, but `private_key_jwt` is required in production.
 
 
@@ -72,12 +77,14 @@ To run the application, `cd` to the `b2b-client` directory:
 cd b2b-client
 ```
 
-Then run the application with:
+Then run the applications with: (I could not make this run in a power shell window, only in command prompt window)
 
 ```bash
-mvn exec:java
+mvn exec:java -Dexec.mainClass="no.bankid.esign.merchant.b2b.B2BMiniExample"
+mvn exec:java -Dexec.mainClass="no.bankid.esign.merchant.b2b.CSCMiniExample"
 ```
 
 If running from an IDE, make sure to set the working directory to the `b2b-client` when running the `B2BMiniExample`
-application.
+or the `CSCMiniExample` application.
 
+Good luck!

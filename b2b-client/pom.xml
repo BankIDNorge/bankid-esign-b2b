@@ -22,7 +22,7 @@
         <dependency>
             <groupId>org.bouncycastle</groupId>
             <artifactId>bcpkix-jdk18on</artifactId>
-            <version>1.77</version>
+            <version>1.82</version>
         </dependency>
 
         <dependency>
@@ -30,6 +30,12 @@
             <artifactId>oauth2-oidc-sdk</artifactId>
             <version>11.23.1</version>
         </dependency>
+        <dependency>
+            <groupId>eu.europa.ec.joinup.sd-dss</groupId>
+            <artifactId>dss-crl-parser-stream</artifactId>
+            <version>6.3</version>
+        </dependency>
+
 
     </dependencies>
 
@@ -49,9 +55,6 @@
                 <groupId>org.codehaus.mojo</groupId>
                 <artifactId>exec-maven-plugin</artifactId>
                 <version>3.5.0</version>
-                <configuration>
-                    <mainClass>no.bankid.esign.merchant.b2b.B2BMiniExample</mainClass>
-                </configuration>
             </plugin>
 
         </plugins>
