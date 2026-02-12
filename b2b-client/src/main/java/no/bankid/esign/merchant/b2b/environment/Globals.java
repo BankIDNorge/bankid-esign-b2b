@@ -31,8 +31,6 @@ public enum Globals {
 
         this.oAuth2TokenApi = OAuth2TokenApi.create(openIDConfig.token_endpoint, dPoPGenerator);
         this.b2bSigner = new B2BSigner(bankIDOidcServer.b2bSignerRootUrl(), dPoPGenerator);
-
-        InterceptingFeignClient.traceTokens = true;
     }
 
     public OAuth2TokenApi.TokenResponse getAccessTokenFromKeycloak() {

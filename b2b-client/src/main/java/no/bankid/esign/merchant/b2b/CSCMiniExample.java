@@ -4,7 +4,10 @@ import eu.europa.esig.dss.enumerations.DigestAlgorithm;
 import eu.europa.esig.dss.enumerations.EncryptionAlgorithm;
 import eu.europa.esig.dss.enumerations.SignatureAlgorithm;
 import no.bankid.esign.feign.api.b2b.csc.model.CscCredentialsList200Response;
+import no.bankid.esign.feign.api.b2b.csc.model.CscCredentialsListRequest;
 import no.bankid.esign.feign.api.b2b.csc.model.CscInfoRequest;
+import no.bankid.esign.merchant.b2b.feignclients.InterceptingFeignClient;
+import no.bankid.esign.merchant.b2b.feignclients.OAuth2TokenApi;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.io.ByteArrayInputStream;
@@ -19,6 +22,13 @@ import java.util.List;
 import static java.security.cert.CertificateFactory.getInstance;
 import static no.bankid.esign.merchant.b2b.environment.Globals.VARS;
 
+/**
+ * A simple example showing how to call the CSC info, credentials list and signHash endpoints,
+ * and how to validate the signature returned from the signHash endpoint using the public key from the credentials list endpoint.
+ * <p>>
+ * The example dumps results from the endpoints to the console; inspecting that may be useful to understand what information is
+ * given, and where to find that.
+ */
 public class CSCMiniExample {
 
     static {
@@ -29,10 +39,50 @@ public class CSCMiniExample {
 
     public static void main(String[] args) throws Exception {
         var test = new CSCMiniExample();
+
+        // Set this to true to see the access token and DPoP proof in the console
+        InterceptingFeignClient.traceTokens = false;
+
         VARS.showPublicKeyJwk();
 
         test.doSomeCscInfo();
+        test.doSomeCscCredentialsInfo();
         test.doSomeCscSignHash();
+    }
+
+    /**
+     * Example of how to call the CSC info endpoint, which returns information about the credentials available for signing, supported algorithms etc.
+     */
+    private void doSomeCscInfo() {
+        CscInfoRequest infoRequest = new CscInfoRequest().lang("nn");
+        var infoPost = VARS.b2bSigner.b2BCscApi().theApi().cscInfo(infoRequest);
+        System.out.println("CSC Info endpoint response: " + infoPost);
+    }
+
+    /**
+     * Example of how to call the CSC credentials list endpoint, which returns the list of credentials available for signing,
+     * including the public key certificates and credential IDs.
+     * <p>
+     * - The credential ID is needed to call the signHash endpoint,
+     * - the public key certificate, together with eventual other naming info are needed
+     * - sometimes for setting values in the document to sign (orgnumber, bankname etc.)
+     * - building the hash to sign (ex: in PAdES, the certificate is needed to build the signed attributes which are part of the data to sign)
+     * - validating the signature returned from the signHash endpoint, using the public key.
+     */
+    private void doSomeCscCredentialsInfo() {
+        final OAuth2TokenApi.TokenResponse tokenResponse = VARS.getAccessTokenFromKeycloak();
+
+        // We ask for "everything" in the credentials list request, to get all the information we need in one call
+        var credentialsListRequest = new CscCredentialsListRequest()
+                .certificates("chain")
+                .credentialInfo(true)
+                .certInfo(true);
+        var credentialsList200Response = VARS.b2bSigner
+                .b2BCscApi()
+                .withATAndDPoP(tokenResponse.access_token, VARS.b2bSigner.cscCredentialsListUri())
+                .cscCredentialsList(credentialsListRequest);
+
+        System.out.println("CSC credentials list response: " + credentialsList200Response);
     }
 
     /**
@@ -50,6 +100,7 @@ public class CSCMiniExample {
      * Parameters
      */
     private void doSomeCscSignHash() {
+        System.out.println("\nDoing some CSC signHash...");
         String stringToHash = "Tristesser";
         String hash1 = sha512(stringToHash);
         CSCAdapter adapter = CSCAdapter.createAdapter();
@@ -68,7 +119,7 @@ public class CSCMiniExample {
         validatePSSSHA512Signature(stringToHash.getBytes(StandardCharsets.UTF_8), signature, signerPublicKey, DataToSignType.ORIGINAL_DATA_BYTES);
         validatePSSSHA512Signature(Base64.getDecoder().decode(hash1), signature, signerPublicKey, DataToSignType.HASH_BYTES);
 
-        System.out.println("Signer:" + signerCert.getSubjectX500Principal().getName("RFC1779"));
+        System.out.println("Signer from certificate: " + signerCert.getSubjectX500Principal().getName("RFC1779"));
         System.out.println("Signer returned from credentials list endpoint: " + credentialsList200Response.getCredentialInfos().getFirst().getCert().getSubjectDN());
         // Code and ideas for validating the ocspResponse may be found in https://github.com/BankIDNorge/bankid-open-b2b-examples repository.
     }
@@ -90,14 +141,6 @@ public class CSCMiniExample {
         }
     }
 
-    /**
-     * Example of how to call the CSC info endpoint, which returns information about the credentials available for signing, supported algorithms etc.
-     */
-    private void doSomeCscInfo() {
-        CscInfoRequest infoRequest = new CscInfoRequest().lang("nn");
-        var infoPost = VARS.b2bSigner.b2BCscApi().theApi().cscInfo(infoRequest);
-        System.out.println("CSC Info endpoint response using post request: " + infoPost);
-    }
 
     /**
      * Helper method to compute the sha256 hash of a string, and return it in base64 format.

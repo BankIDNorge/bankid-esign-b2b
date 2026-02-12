@@ -1,6 +1,7 @@
 package no.bankid.esign.merchant.b2b;
 
 import no.bankid.esign.feign.api.b2b.v0.model.*;
+import no.bankid.esign.merchant.b2b.feignclients.InterceptingFeignClient;
 import no.bankid.esign.merchant.b2b.feignclients.OAuth2TokenApi.TokenResponse;
 
 import java.io.IOException;
@@ -20,6 +21,10 @@ public class B2BMiniExample {
 
     public static void main(String[] args) throws Exception {
         var test = new B2BMiniExample();
+
+        // Set this to true to see the access token and DPoP proof in the console
+        InterceptingFeignClient.traceTokens = false;
+
         VARS.showPublicKeyJwk();
         test.doASimpleTextSigning();
         test.doBuildSdoFromCms(0,2,1,3,2,2,2);
