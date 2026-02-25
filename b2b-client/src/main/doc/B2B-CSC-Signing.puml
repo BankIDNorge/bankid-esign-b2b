@@ -1,0 +1,47 @@
+@startuml
+'https://plantuml.com/sequence-diagram
+
+autonumber
+Actor Customer as customer #green
+participant ClientApp as client #green
+database CustomerDB as db #green
+participant BankIDOIDC as oidc
+participant B2BCscSigner as signer
+participant BankIDService as bidj
+participant BankIDVault as certstore
+
+title How to use a client for B2B CSC signing with BankID OIDC
+
+== use ==
+client -> db: get key for authentication
+client -> client: create DPoP proof for oidc
+client -> oidc: authenticate (jwt, dpop) with esign/b2b
+oidc --> client: signed access_token with esign/b2b (dpop bound)
+client -> client: create DPoP proof for signer
+client -[#red]> signer: csc/v2/credentials/list (access_token, dpop proof)
+signer -> bidj: get certificates for client-id
+bidj -> certstore: get complete certchain for client-id
+certstore --> bidj: bankid-cert and credentialId for client-id
+bidj --> signer: bankid-cert and credentialId for client-id
+client -> client: build data to sign(bankid-cert, documents)\ncompute hashes for\nPAdES,XAdES or CAdES signing
+client -> client: create DPoP proof for signer
+client -[#red]> signer: csc/v2/signatures/signHash (access_token, dpop proof, hashes, credentialId)
+signer -> signer: verify access_token, dop proof, sign parameters
+signer -> bidj: pkcs1 - sign hashes using bankid-cert for given credentialId
+bidj -> bidj: get OCSP for signer cert from VA
+bidj -> certstore: sign each hash for credentialId
+certstore -> certstore: sign with private bankid key(credentialId)
+note right of certstore
+  This signing is only an
+  encryption of the hash
+  using the private key.
+end note
+certstore --> bidj: pkcs1 signatures
+bidj --> signer: pkcs1 signatures, OCSP
+signer --> client: pkcs1 signatures, OCSP
+client -> client: embed signatures and OCSP into documents
+client --> customer: signed documents
+
+
+
+@enduml

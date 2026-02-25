@@ -54,4 +54,8 @@ public class FeignClientWithDPoPProofAndAccessToken<ClientType> {
         return Base64.getEncoder().encodeToString(
             (clientId + ":" + clientSecret).getBytes(StandardCharsets.UTF_8));
     }
+
+    public ClientType theApi() {
+        return api;
+    }
 }

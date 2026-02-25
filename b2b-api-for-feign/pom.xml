@@ -117,6 +117,28 @@
                             </configOptions>
                         </configuration>
                     </execution>
+                    <execution>
+                        <id>api-b2b-csc-java-feign-v0</id>
+                        <goals>
+                            <goal>generate</goal>
+                        </goals>
+                        <configuration>
+                            <inputSpec>
+                                https://developer.bankid.no/bankid-esign-provider/apis/b2b/csc/b2b-csc-v2.0.external.yaml
+                            </inputSpec>
+                            <modelPackage>no.bankid.esign.feign.api.b2b.csc.model</modelPackage>
+                            <apiPackage>no.bankid.esign.feign.api.b2b.csc.api</apiPackage>
+                            <generatorName>java</generatorName>
+                            <configOptions>
+                                <sourceFolder>src/gen/java/main</sourceFolder>
+                                <interfaceOnly>true</interfaceOnly>
+                                <library>feign</library>
+                                <openApiNullable>false</openApiNullable>
+                                <useJakartaEe>true</useJakartaEe>
+                                <useTags>true</useTags>
+                            </configOptions>
+                        </configuration>
+                    </execution>
                 </executions>
             </plugin>
         </plugins>
