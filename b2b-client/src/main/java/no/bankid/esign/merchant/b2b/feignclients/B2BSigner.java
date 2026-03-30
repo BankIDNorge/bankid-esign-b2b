@@ -9,6 +9,7 @@ import no.bankid.esign.feign.api.b2b.csc.api.CscCredentialsApi;
 import no.bankid.esign.feign.api.b2b.csc.api.CscInfoApi;
 import no.bankid.esign.feign.api.b2b.csc.api.CscSignaturesApi;
 import no.bankid.esign.feign.api.b2b.csc.model.*;
+import no.bankid.esign.feign.api.b2b.v0.api.B2bAdEsApi;
 import no.bankid.esign.feign.api.b2b.v0.api.B2bSignApi;
 import no.bankid.esign.feign.api.b2b.v0.model.BidXml;
 import no.bankid.esign.feign.api.b2b.v0.model.MimeType;
@@ -22,11 +23,16 @@ import java.net.URI;
 public class B2BSigner {
 
     final FeignClientWithDPoPProofAndAccessToken<B2bSignApi> b2bSignApi;
+    final FeignClientWithDPoPProofAndAccessToken<B2bAdEsApi> b2bAdesApi;
     final FeignClientWithDPoPProofAndAccessToken<B2bCscApi> b2bCscApi;
 
 
     public FeignClientWithDPoPProofAndAccessToken<B2bSignApi> b2BSignApi() {
         return b2bSignApi;
+    }
+
+    public FeignClientWithDPoPProofAndAccessToken<B2bAdEsApi> b2bAdesApi() {
+        return b2bAdesApi;
     }
 
     public FeignClientWithDPoPProofAndAccessToken<B2bCscApi> b2BCscApi() {
@@ -52,6 +58,13 @@ public class B2BSigner {
         return padesCmsesFromHashesUri;
     }
 
+    public URI padesSignUri() {
+        return padesSignUri;
+    }
+
+    public URI xadesSignUri() {
+        return xadesSignUri;
+    }
 
     public URI cscInfoUri() {
         return cscInfoUri;
@@ -77,6 +90,9 @@ public class B2BSigner {
     final URI cmsesFromHashesUri;
     final URI padesCmsesFromHashesUri;
 
+    final URI padesSignUri;
+    final URI xadesSignUri;
+
     final URI cscInfoUri;
     final URI cscCredentialsInfoUri;
     final URI cscCredentialsListUri;
@@ -90,6 +106,9 @@ public class B2BSigner {
         this.cmsesFromHashesUri = URI.create(b2bSignerRoot + "/v0/b2b/cmses_from_hashes");
         this.padesCmsesFromHashesUri = URI.create(b2bSignerRoot + "/v0/b2b/pades/cmses_from_hashes");
 
+        this.padesSignUri = URI.create(b2bSignerRoot + "/v0/b2b/ades/pades");
+        this.xadesSignUri = URI.create(b2bSignerRoot + "/v0/b2b/ades/xades");
+
         this.cscCredentialsInfoUri = URI.create(b2bSignerRoot + "/v0/b2b/csc/v2/credentials/info");
         this.cscCredentialsListUri = URI.create(b2bSignerRoot + "/v0/b2b/csc/v2/credentials/list");
         this.cscInfoUri = URI.create(b2bSignerRoot + "/v0/b2b/csc/v2/info");
@@ -100,6 +119,12 @@ public class B2BSigner {
                 .encoder(new JacksonEncoder(feignObjectMapper()))
             .decoder(new JacksonDecoder())
             .target(B2bSignApi.class, b2bSignerRoot));
+
+        this.b2bAdesApi = new FeignClientWithDPoPProofAndAccessToken<>(dPoP, Feign.builder()
+                .client(new InterceptingFeignClient("B2BAdes"))
+                .encoder(new JacksonEncoder(feignObjectMapper()))
+                .decoder(new JacksonDecoder())
+                .target(B2bAdEsApi.class, b2bSignerRoot));
 
         FeignClientWithDPoPProofAndAccessToken<CscInfoApi> cscInfoApi = new FeignClientWithDPoPProofAndAccessToken<>(dPoP, Feign.builder()
                 .client(new InterceptingFeignClient("CscInfoApi"))
