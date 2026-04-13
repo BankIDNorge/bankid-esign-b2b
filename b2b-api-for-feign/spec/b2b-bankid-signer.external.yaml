@@ -1,0 +1,739 @@
+openapi: 3.0.3
+
+info:
+  title: B2B-Sign V0
+  description: Support functions for B2B signing service for business customers. API is for public use.
+  version: 0.0.1
+servers:
+  - url: "https://api.preprod.esign-stoetest.cloud"
+    description: Public testing environment
+  - url: "https://api.esign-stoe.cloud"
+    description: "Production"
+
+components:
+  securitySchemes:
+    bearerAuth:
+      type: oauth2
+      x-bearerFormat: DPoP
+      flows:
+        clientCredentials:
+          tokenUrl: https://auth.current.bankid.no/auth/realms/current/protocol/openid-connect/token
+          scopes:
+            esign/b2b: Opens the B2B signing service for b2b orders
+
+  schemas:
+    Description:
+      type: string
+      description: Description of document used as merchantDesc in sdo Metadata
+      minLength: 1
+      maxLength: 128
+
+    ErrorResponse:
+      type: object
+      properties:
+        error:
+          type: string
+          description: Error code
+        error_description:
+          type: string
+          description: Error description
+        error_reference:
+          type: string
+          description: Error reference for further investigation
+
+    BidXml:
+      type: object
+      required:
+        - xml
+        - xsl
+      properties:
+        xml:
+          type: string
+          description: XML. Must be used together with "xsl".
+          minLength: 1
+          maxLength: 5000000 # TODO check maxLength
+        xsl:
+          type: string
+          description: XML Stylesheet. Must be used together with "xml".
+          minLength: 1
+          maxLength: 5000000 # TODO check maxLength
+
+    TbsHash:
+      type: object
+      required:
+        - hash
+        - mime_type
+        - description
+      properties:
+        hash:
+          type: string
+          description: Base64 encoded value of a SHA256 hash
+          minLength: 44
+          maxLength: 44
+        mime_type:
+          $ref: "#/components/schemas/MimeType"
+        description:
+          type: string
+          description: Description of document used as merchantDesc in sdo Metadata
+          maxLength: 128
+
+    TextToSignAndDescription:
+      type: object
+      required:
+        - text_to_sign
+        - description
+      properties:
+        text_to_sign:
+          type: string
+          description: String to be signed, for hashing, bytes to sign will be `textToSign.getBytes(StandardCharsets.ISO_8859_1)`
+          minLength: 1
+          maxLength: 5000000 # TODO check maxLength
+        description:
+          $ref: "#/components/schemas/Description"
+
+    PdfToSignAndDescription:
+      type: object
+      required:
+        - pdf
+        - description
+      properties:
+        pdf:
+          type: string
+          description: Base64 encoded PDF.
+          minLength: 1
+          maxLength: 5000000 # TODO check maxLength
+        description:
+          $ref: "#/components/schemas/Description"
+
+    BidXmlToSignAndDescription:
+      type: object
+      required:
+        - bidxml
+        - description
+      properties:
+        bidxml:
+          $ref: "#/components/schemas/BidXml"
+        description:
+          $ref: "#/components/schemas/Description"
+
+    TbsDocument:
+      oneOf:
+        - $ref: "#/components/schemas/TextToSignAndDescription"
+        - $ref: "#/components/schemas/PdfToSignAndDescription"
+        - $ref: "#/components/schemas/BidXmlToSignAndDescription"
+
+    HashAndSdo:
+      type: object
+      required:
+        - signed_hash
+        - sdo
+      properties:
+        signed_hash:
+          type: string
+          description: Base64 encoded hash of the document signed
+        sdo:
+          type: string
+          description: Base64 encoded value of the sealed sdo. If given, document data included in the SDO.
+
+    HashAndCms:
+      type: object
+      required:
+        - signed_hash
+        - cms
+      properties:
+        signed_hash:
+          type: string
+          description: Base64 encoding of the hash signed
+        cms:
+          type: string
+          description: Base64 encoded value of cms/pkcs7 signing result
+
+    HashList:
+      type: array
+      description: JSON array of SHA256 hashes to be signed
+      minItems: 0
+      maxItems: 15
+      items:
+        type: string
+        description: Base64 encoded value of a SHA256 hash
+        minLength: 44
+        maxLength: 44
+
+    CmsAndOcsp:
+      type: object
+      required:
+        - cms
+        - ocsp
+      properties:
+        cms:
+          type: string
+          description: Base64 encoded value of cms/pkcs7 result
+        ocsp:
+          type: string
+          description: Base64 encoding of the ocsp used by the signer
+    MimeType:
+      type: string
+      enum:
+        - text/plain
+        - application/pdf
+        - text/BIDXML
+
+    CmsAndOcspsWithDocument:
+      type: object
+      required:
+        - cms_and_ocsps
+        - document
+      properties:
+        cms_and_ocsps:
+          type: array
+          description: JSON array of the signatures and corresponding ocsps to pack together in the sdo result
+          minItems: 1
+          maxItems: 15
+          items:
+            $ref: "#/components/schemas/CmsAndOcsp"
+        document:
+          $ref: "#/components/schemas/TbsDocument"
+
+    CmsAndOcspsWithMimeTypeAndDescription:
+      type: object
+      required:
+        - cms_and_ocsps
+        - mime_type
+        - description
+      properties:
+        cms_and_ocsps:
+          type: array
+          description: JSON array of the signatures and corresponding ocsps to pack together in the sdo result
+          minItems: 1
+          maxItems: 15
+          items:
+            $ref: "#/components/schemas/CmsAndOcsp"
+        mime_type:
+          $ref: "#/components/schemas/MimeType"
+        description:
+          $ref: "#/components/schemas/Description"
+
+    XadesSignRequest:
+      type: object
+      required:
+        - xmlBytesB64
+        - hashAlgorithmOID
+        - signAlgo
+        - xadesType
+      properties:
+        xmlBytesB64:
+          type: string
+          description: Base64 encoded XML to be signed
+        whatToSignId:
+          type: string
+          description: > 
+            Id for the element to be signed. If not specified or empty, the whole document will be signed.
+            Id for elements must be specified as an URI with #, e.g. #dataToBeSigned
+          pattern: "^#.*"
+        whereToPlaceSignatureId:
+          type: string
+          description: >
+            Id for where the signature element is placed. If not specified or empty, signature will be placed last in the XML
+            Id for elements must be specified as an URI with #, e.g. #placeSignatureHere
+          pattern: "^#.*"
+        hashAlgorithmOID:
+          type: string
+          description: Digest algorithm oid, see B2B csc specification for allowed values
+        signAlgo:
+          type: string
+          description: Signature algorithm oid, see B2B csc specification for allowed values
+        xadesType:
+          type: string
+          description: >
+            XAdES Baseline type: B eller LT
+          enum:
+            - B
+            - LT
+
+    PadesSignRequest:
+      type: object
+      required:
+        - pdfBytesB64
+        - hashAlgorithmOID
+        - signAlgo
+        - padesType
+      properties:
+        pdfBytesB64:
+          type: string
+          description: Base64 encoded PDF to be signed
+        reason:
+          type: string
+          description: Reason for signing (optional)
+        hashAlgorithmOID:
+          type: string
+          description: Digest algorithm oid, see B2B csc specification for allowed values
+        signAlgo:
+          type: string
+          description: Signature algorithm oid, see B2B csc specification for allowed values
+        padesType:
+          type: string
+          description: >
+            PAdES Baseline type: B or LT
+          enum:
+            - B
+            - LT
+
+    AdesVSummary:
+      type: object
+      properties:
+        conformanceLevel:
+          type: string
+          description: AdES Baseline conformance level, PAdES-BASELINE-LT, XAdES-BASELINE-B etc.
+        mainIndication:
+          type: string
+          description: Main indication for the signature, e.g. "TOTAL_PASSED", "INDETERMINATE" etc.
+        subIndication:
+          type: string
+          description: subindication for mainindication, e.g. "NO_CERTIFICATE_CHAIN_FOUND", "REVOKED" etc.
+        signingTime:
+          type: string
+          description: Signing time as reported by the signer, format as java ISO_INSTANT e.g. "2026-01-30T12:37:46Z"
+        signerName:
+          type: string
+          description: Name of the signer
+      example:
+        conformanceLevel: PAdES-BASELINE-LT
+        mainIndication: TOTAL_PASSED
+        subIndication:
+        signingTime: 2026-01-30T12:37:46Z
+        signerName: BankID Test Merchant
+
+    PadesSignResponse:
+      type: object
+      required:
+        - padesB64
+        - ocspB64
+      properties:
+        padesB64:
+          type: string
+          description: Base64 encoded PAdES signed PDF
+        ocspB64:
+          type: string
+          description: Base64 encoding of the ocsp used by the signer
+        adesVSummaries:
+          type: array
+          description: Array of AdES simple validation summaries for the signatures in the AdES, one for each signature in the same order as the signatures in the AdES.
+          items:
+            $ref: "#/components/schemas/AdesVSummary"
+
+    XadesSignResponse:
+      type: object
+      required:
+        - xadesB64
+        - ocspB64
+      properties:
+        xadesB64:
+          type: string
+          description: Base64 encoded XAdES signed XML
+        ocspB64:
+          type: string
+          description: Base64 encoding of the ocsp used by the signer
+        adesVSummaries:
+          type: array
+          description: Array of AdES simple validation summaries for the signatures in the AdES, one for each signature in the same order as the signatures in the AdES.
+          items:
+            $ref: "#/components/schemas/AdesVSummary"
+
+  responses:
+    C-200-sdo:
+      description: Hashes or documents signed and sdos created
+      content:
+        application/json:
+          schema:
+            type: array
+            description: Array of sign results, one for each hash in the same order as the hashes or documents in the signing request.
+            items:
+              $ref: "#/components/schemas/HashAndSdo"
+    C-200-cms:
+      description: Hashes or documents signed, cmses created, ocsp for oidcClient retrieved
+      content:
+        application/json:
+          schema:
+            type: object
+            properties:
+              client_ocsp:
+                type: string
+                description: Base64 encoded OCSP response for the oidcClient
+              sign_results:
+                type: array
+                description: Array of sign results, one for each hash in the same order as the hashes or documents in the signing request.
+                items:
+                  $ref: "#/components/schemas/HashAndCms"
+    C-400:
+      description: Bad request.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    C-401:
+      description: Access token is missing or invalid.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+    C-403:
+      description: Access token does not authorize.
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/ErrorResponse"
+
+    XadesSignResponse:
+      description: Base64 encoded XAdES signed XML, OCSP response for the signer certificate and some validation summary.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/XadesSignResponse'
+
+    PadesSignResponse:
+      description: Base64 encoded PAdES signed PDF, OCSP response for the signer certificate and some validation summary.
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PadesSignResponse'
+
+  requestBodies:
+    FromHashesRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required:
+              - tbs_hashes
+            properties:
+              tbs_hashes:
+                type: array
+                description: JSON array of SHA256 hashes to be signed
+                minItems: 1
+                maxItems: 15
+                items:
+                  $ref: "#/components/schemas/TbsHash"
+
+    HashesOnlyRequest:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: "#/components/schemas/HashList"
+
+    XadesSignRequestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/XadesSignRequest'
+    PadesSignRequestBody:
+      required: true
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/PadesSignRequest'
+
+security:
+  - bearerAuth: []
+
+paths:
+  /v0/b2b/sdo_from_hash:
+    post:
+      tags:
+        - b2bSign
+      operationId: sdoFromHash
+      summary: Sign a hash, return an sdo
+      description: |
+        - Sign a hash
+        - Build an sdo
+        - Use BankID merchant certificate assigned to the oidc client for signing
+        - To make a valid SDO, the client must itself add the SignedObject to the SDO
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                hash:
+                  type: string
+                  minLength: 44
+                  maxLength: 44
+                  description: Base64 encoded Sha256 of bytes to sign
+                description:
+                  $ref: "#/components/schemas/Description"
+                mime_type:
+                  $ref: "#/components/schemas/MimeType"
+              required:
+                - hash
+                - description
+                - mime_type
+      responses:
+        "200":
+          description: |
+            - Ocsp for oidcClient retrieved
+            - hash signed and SDO created
+            - To make a valid SDO, the client must itself add the SignedObject to the SDO
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HashAndSdo"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/sdos_from_hashes:
+    post:
+      tags:
+        - b2bSign
+      operationId: sdosFromHashes
+      summary: Sign a sequence of hashes, returns sdos
+      description: |
+        - Sign a sequence of hashes
+        - Builds one sdo for each hash
+        - To make valid SDOs, each must be extended on client side with the SignedObject structure (actual signed document)
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        $ref: "#/components/requestBodies/FromHashesRequest"
+      responses:
+        "200":
+          $ref: "#/components/responses/C-200-sdo"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/cmses_from_hashes:
+    post:
+      tags:
+        - b2bSign
+      operationId: cmsesFromHashes
+      summary: Sign a sequence of hashes, return cmses
+      description: |
+        - Sign a sequence of hashes
+        - Builds one cms for each hash
+        - Adds the ocsp for the oidc client to the result.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        $ref: "#/components/requestBodies/HashesOnlyRequest"
+
+      responses:
+        "200":
+          $ref: "#/components/responses/C-200-cms"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/pades/cmses_from_hashes:
+    post:
+      tags:
+        - b2bSign
+      operationId: padesCmsesFromHashes
+      summary: |
+        Sign a sequence of hashes, return PAdES compatible cmses
+      description: |
+        - Signs a sequence of hashes building cms compatible with ISO320001 (PAdES)
+        - Builds one cms for each hash
+        - Gets the OCSPresponse in RFC6960 compatible format
+        - Adds the OCSPresponse for the oidc client to the result.
+        -
+        - The CMS are PAdES-Baseline B and CAdES-Baseline B (detached) compliant. 
+        - The CMS SignerInfo does not contain the (optional) signingTime attribute.
+      requestBody:
+        $ref: "#/components/requestBodies/HashesOnlyRequest"
+
+      responses:
+        "200":
+          $ref: "#/components/responses/C-200-cms"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/sdo_from_text:
+    post:
+      tags:
+        - b2bSign
+      operationId: sdoFromText
+      summary: Sign a text, build an sdo
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - text_to_sign
+                - description
+              properties:
+                text_to_sign:
+                  type: string
+                  minLength: 1
+                  maxLength: 5000000 # TODO check maxLength
+                  description: String to be signed, for hashing, bytes to sign will be `textToSign.getBytes(StandardCharsets.ISO_8859_1)`
+                description:
+                  $ref: "#/components/schemas/Description"
+
+      responses:
+        "200":
+          description: Sign done, ocsp for oidcClient retrieved, hash signed and sdo created
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HashAndSdo"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/sdos_from_docs:
+    post:
+      tags:
+        - b2bSign
+      operationId: sdosFromDocuments
+      summary: Sign a sequence of documents and build sdos.
+      description: |
+        - Sign a sequence of documents 
+        - Build one sdo for each document
+        - Use merchant certificate assigned to the oidc client for signing
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required:
+                - tbs_documents
+              properties:
+                tbs_documents:
+                  type: array
+                  description: JSON array of documents to be signed (minimum one). The document to be signed is represented as a JSON object. Each document must provide a value for either "text", "pdf" or the pair "xml" and "xsl".
+                  minItems: 1
+                  maxItems: 15
+                  items:
+                    $ref: "#/components/schemas/TbsDocument"
+
+      responses:
+        "200":
+          $ref: "#/components/responses/C-200-sdo"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/sdo_from_cmses:
+    post:
+      tags:
+        - b2bSign
+      operationId: sdoFromCmses
+      summary: Pack and seal an sdo
+      description: |
+        - Build an sdo from a sequence of CMS-es together with their corresponding OCSPs.
+        - Seal the SDO.
+        - The CMS-es must be the result of signing the same document, only SHA256WithRSA is supported.
+        - One of the real document or the document's mimeType must be included in the request.
+          - If document included, the document data will be included in the SDO.
+          - If not included, the sdo must be completed on client side.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              oneOf:
+                - $ref: "#/components/schemas/CmsAndOcspsWithDocument"
+                - $ref: "#/components/schemas/CmsAndOcspsWithMimeTypeAndDescription"
+
+      responses:
+        "200":
+          description: Sdo building done, hash for document and sdo returned.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/HashAndSdo"
+        "400":
+          $ref: "#/components/responses/C-400"
+        "401":
+          $ref: "#/components/responses/C-401"
+        "403":
+          $ref: "#/components/responses/C-403"
+
+  /v0/b2b/ades/xades:
+    post:
+      tags:
+        - b2bAdES
+      operationId: xadesSign
+      summary: Create XAdES Baseline B or LT signature
+      description: |
+        - Signs the provided XML using XAdES Baseline B or LT, producing an enveloped signature.
+        - Required input are xmlBytesB64, digestAlg, signAlg and xadesType.
+        - Default is to create a signature over the whole document and place the signature last in the XML
+        - It is possible to specify element id-s for what to sign and where to place the signature
+        - Transformations run are 
+          - "http://www.w3.org/2000/09/xmldsig#enveloped-signature"
+          - "http://www.w3.org/2001/10/xml-exc-c14n#"
+        - The b2b server will use it's own signing time, the OIDC client's certificate and OCSP in the signing operation.
+        - The timestamp service, if asked for, will use a secure time source for the timestamp.
+        - Result contains the signed XML and the OCSP for the signer certificate used in the signing operation.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        $ref: '#/components/requestBodies/XadesSignRequestBody'
+      responses:
+        '200':
+          $ref: '#/components/responses/XadesSignResponse'
+        '400':
+          $ref: '#/components/responses/C-400'
+        '401':
+          $ref: '#/components/responses/C-401'
+        '403':
+          $ref: '#/components/responses/C-403'
+  /v0/b2b/ades/pades:
+    post:
+      tags:
+        - b2bAdES
+      operationId: padesSign
+      summary: Create PAdES Baseline B or LT signature
+      description: |
+        - Signs the provided PDF using PAdES Baseline B or LT.
+        - Required input are pdfBytesB64, digestAlg, signAlg and padesType.
+        - Optional parameters: reason, signerName, location, contactInfo.
+        - The b2b server will use it's own signing time, the OIDC client's certificate and OCSP in the signing operation.
+        - The timestamp service, if asked for, will use a secure time source for the timestamp.
+        - Result contains the signed PAdES and the OCSP for the signer certificate used in the signing operation.
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        $ref: '#/components/requestBodies/PadesSignRequestBody'
+      responses:
+        '200':
+          $ref: '#/components/responses/PadesSignResponse'
+        '400':
+          $ref: '#/components/responses/C-400'
+        '401':
+          $ref: '#/components/responses/C-401'
+        '403':
+          $ref: '#/components/responses/C-403'

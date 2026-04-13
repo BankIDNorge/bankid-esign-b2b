@@ -79,12 +79,31 @@ cd b2b-client
 
 Then run the applications with: (I could not make this run in a power shell window, only in command prompt window)
 
+### B2B v0 — SDO-based signing
 ```bash
 mvn exec:java -Dexec.mainClass="no.bankid.esign.merchant.b2b.B2BMiniExample"
+```
+
+### CSC v2 — Raw hash signing
+```bash
 mvn exec:java -Dexec.mainClass="no.bankid.esign.merchant.b2b.CSCMiniExample"
 ```
 
-If running from an IDE, make sure to set the working directory to the `b2b-client` when running the `B2BMiniExample`
-or the `CSCMiniExample` application.
+### XAdES — Server-side XML signing
+Creates XAdES Baseline B or LT signatures from XML documents. The server handles certificate management, OCSP, and optional timestamping.
+```bash
+mvn exec:java -Dexec.mainClass="no.bankid.esign.merchant.b2b.XAdESFromXmlRemote"
+```
+This example demonstrates two scenarios:
+- Signing a simple XML with a targeted element (`#dataToSign`) using XAdES-LT (with timestamp)
+- Signing a Brønnøysund Registry XML with a designated signature placement (`#placeSignatureHere`) using XAdES-B
+
+### PAdES — Server-side PDF signing
+Creates PAdES Baseline LT signatures from PDF documents. Place PDF files (e.g. `small-ex.pdf`) in the `b2b-client` working directory before running.
+```bash
+mvn exec:java -Dexec.mainClass="no.bankid.esign.merchant.b2b.PAdESFromPdfRemote"
+```
+
+If running from an IDE, make sure to set the working directory to the `b2b-client` when running any of the example applications.
 
 Good luck!
