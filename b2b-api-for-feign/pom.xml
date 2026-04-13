@@ -102,8 +102,11 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
+                            <!-- TODO: revert to external URL once docs are published:
+                                 https://developer.bankid.no/bankid-esign-provider/apis/b2b/v0/b2b-bankid-signer.external.yaml -->
                             <inputSpec>
-                                https://developer.bankid.no/bankid-esign-provider/apis/b2b/v0/b2b-bankid-signer.external.yaml                            </inputSpec>
+                                ${project.basedir}/spec/b2b-bankid-signer.external.yaml
+                            </inputSpec>
                             <modelPackage>no.bankid.esign.feign.api.b2b.v0.model</modelPackage>
                             <apiPackage>no.bankid.esign.feign.api.b2b.v0.api</apiPackage>
                             <generatorName>java</generatorName>
